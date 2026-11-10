@@ -1,0 +1,703 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="icon" href="data:," />
+    <title>文字签共享池 · 抽签投签</title>
+    <style>
+      :root {
+        --bg: #f7f0df;
+        --surface: #fffaf0;
+        --surface-2: #f3e8cf;
+        --text: #2b2118;
+        --dim: #7a6a55;
+        --border: #e0d2ae;
+        --accent: #c03a24;
+        --accent-ink: #9c2b18;
+        --gold: #b98a1e;
+        --gold-bg: #fdf3d0;
+        --radius: 14px;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #201913;
+          --surface: #2c2117;
+          --surface-2: #3a2c1e;
+          --text: #f3e9d7;
+          --dim: #b8a88f;
+          --border: #4a3a28;
+          --accent: #e2603f;
+          --accent-ink: #f0856a;
+          --gold: #d9ab3c;
+          --gold-bg: #3d3016;
+        }
+      }
+      * { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; }
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+        line-height: 1.6;
+        -webkit-font-smoothing: antialiased;
+      }
+      .kaiti { font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "STSong", serif; }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 28px 16px 40px;
+      }
+
+      /* ---------- 页眉 ---------- */
+      header { text-align: center; margin-bottom: 30px; }
+      .date-line { font-size: 13px; color: var(--dim); letter-spacing: .04em; }
+      h1 {
+        font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "STSong", serif;
+        font-size: 36px; font-weight: 700; margin: 8px 0 10px; line-height: 1.25;
+      }
+      .sub { font-size: 14.5px; color: var(--dim); margin: 0 auto; max-width: 34em; }
+
+      h2.section-title {
+        font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "STSong", serif;
+        font-size: 24px; font-weight: 700; margin: 0 0 16px; line-height: 1.3;
+      }
+      .center { text-align: center; }
+
+      section { margin-bottom: 36px; }
+
+      /* ---------- 签筒 ---------- */
+      .tube-stage { position: relative; width: 200px; margin: 4px auto 18px; padding-top: 6px; }
+      .tube-wrap { position: relative; height: 178px; }
+      .tube-wrap.shaking { animation: shake .7s ease-in-out; }
+      @keyframes shake {
+        0%, 100% { transform: translateX(0) rotate(0deg); }
+        12% { transform: translateX(-7px) rotate(-3.5deg); }
+        25% { transform: translateX(6px) rotate(3deg); }
+        38% { transform: translateX(-6px) rotate(-3deg); }
+        50% { transform: translateX(5px) rotate(2.5deg); }
+        62% { transform: translateX(-4px) rotate(-2deg); }
+        75% { transform: translateX(3px) rotate(1.4deg); }
+        88% { transform: translateX(-2px) rotate(-.8deg); }
+      }
+      .stick {
+        position: absolute; bottom: 78px; left: 50%;
+        width: 17px; height: 96px; margin-left: -8.5px;
+        background: #e8cf9a; border: 1px solid #d9b96a; border-bottom: none;
+        border-radius: 5px 5px 0 0;
+        transform-origin: 50% 100%;
+      }
+      .stick::after {
+        content: ""; position: absolute; top: 9px; left: -1px; right: -1px; height: 7px;
+        background: #d9b96a;
+      }
+      .stick.s1 { transform: translateX(-36px) rotate(-12deg); }
+      .stick.s2 { transform: translateX(-18px) rotate(-6deg); }
+      .stick.s3 { transform: translateX(0) rotate(0deg); }
+      .stick.s4 { transform: translateX(18px) rotate(6deg); }
+      .stick.s5 { transform: translateX(36px) rotate(12deg); }
+      .tube {
+        position: absolute; bottom: 0; left: 50%; transform: translateX(-50%);
+        width: 112px; height: 92px;
+        background: linear-gradient(180deg, var(--accent) 0%, var(--accent-ink) 100%);
+        border-radius: 12px 12px 20px 20px;
+        box-shadow: inset 0 3px 0 rgba(255,255,255,.22), 0 6px 14px rgba(0,0,0,.14);
+        display: flex; align-items: center; justify-content: center;
+      }
+      .tube-face {
+        width: 54px; height: 54px; border-radius: 50%;
+        background: #fffaf0; color: #c03a24;
+        display: flex; align-items: center; justify-content: center;
+        font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "STSong", serif;
+        font-size: 27px; font-weight: 700; line-height: 1;
+      }
+
+      /* ---------- 彩纸 ---------- */
+      .confetti { position: absolute; inset: -8px 0 auto 0; height: 210px; pointer-events: none; overflow: visible; z-index: 3; }
+      .confetti-piece {
+        position: absolute; top: 0; width: 9px; height: 14px; border-radius: 2px; opacity: 0;
+      }
+      .confetti.go .confetti-piece { animation: confetti-fall 1.4s ease-out forwards; }
+      @keyframes confetti-fall {
+        0% { opacity: 0; transform: translateY(0) rotate(0deg); }
+        12% { opacity: 1; }
+        85% { opacity: 1; }
+        100% { opacity: 0; transform: translateY(196px) rotate(320deg); }
+      }
+
+      /* ---------- 按钮 ---------- */
+      .btn-draw {
+        display: block; margin: 0 auto;
+        background: var(--accent); color: #fff;
+        border: none; cursor: pointer;
+        font-size: 17px; font-weight: 600;
+        padding: 13px 38px; border-radius: 999px;
+        box-shadow: 0 4px 12px rgba(0,0,0,.16);
+      }
+      .btn-draw:disabled { opacity: .65; cursor: default; }
+      .btn-draw:active:not(:disabled) { transform: scale(.98); }
+      .draw-msg { text-align: center; font-size: 14px; color: var(--accent-ink); min-height: 1.6em; margin: 12px 0 0; }
+
+      /* ---------- 签卡（结果 + 签墙共用） ---------- */
+      .gold-banner {
+        background: var(--gold-bg); color: var(--gold);
+        border: 1.5px solid var(--gold); border-radius: var(--radius);
+        text-align: center; font-weight: 700; font-size: 15px;
+        padding: 10px 14px; margin: 18px 0 10px;
+      }
+      .slip-card {
+        background: var(--surface); border: 1.5px solid var(--border);
+        border-radius: var(--radius); padding: 16px 18px;
+        box-shadow: 0 2px 8px rgba(0,0,0,.05);
+      }
+      .slip-card.gold { border-color: var(--gold); background: var(--gold-bg); }
+      .slip-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+      .grade-badge {
+        background: var(--accent); color: #fff;
+        font-size: 12.5px; font-weight: 600;
+        padding: 3px 11px; border-radius: 999px; white-space: nowrap; line-height: 1.5;
+      }
+      .slip-card.gold .grade-badge { background: var(--gold); }
+      .slip-meta { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+      .cat-label { font-size: 12.5px; color: var(--dim); }
+      .badge-new {
+        background: var(--accent); color: #fff; font-size: 11.5px; font-weight: 600;
+        padding: 2px 8px; border-radius: 999px; line-height: 1.5; white-space: nowrap;
+      }
+      .badge-mine {
+        background: var(--surface); color: var(--accent-ink);
+        border: 1.5px solid var(--accent); font-size: 11.5px; font-weight: 600;
+        padding: 1px 8px; border-radius: 999px; line-height: 1.5; white-space: nowrap;
+      }
+      .slip-text {
+        font-family: "KaiTi", "STKaiti", "Kaiti SC", "Songti SC", "STSong", serif;
+        font-size: 20px; line-height: 1.55; margin: 0 0 8px; overflow-wrap: break-word;
+      }
+      .slip-yiji { font-size: 14px; color: var(--dim); margin: 0 0 6px; }
+      .slip-fortune { font-size: 14px; margin: 0 0 12px; overflow-wrap: break-word; }
+      .slip-foot { font-size: 12.5px; color: var(--dim); text-align: right; }
+      .rise { animation: rise .45s ease-out; }
+      @keyframes rise {
+        from { opacity: 0; transform: translateY(14px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .btn-copy {
+        display: block; margin: 12px auto 0;
+        background: transparent; color: var(--accent-ink);
+        border: 1.5px solid var(--accent); border-radius: 999px;
+        font-size: 14px; font-weight: 600; padding: 8px 22px; cursor: pointer;
+      }
+
+      /* ---------- 投签 ---------- */
+      .panel {
+        background: var(--surface); border: 1.5px solid var(--border);
+        border-radius: var(--radius); padding: 20px 18px;
+      }
+      .hint-box {
+        background: var(--surface-2); border-radius: 10px;
+        padding: 12px 14px; font-size: 14px; margin: 0 0 4px;
+      }
+      .field { margin-top: 16px; }
+      .field label.field-label { display: block; font-size: 14px; font-weight: 600; margin-bottom: 7px; }
+      .field .optional { font-weight: 400; color: var(--dim); font-size: 12.5px; }
+      textarea, input[type="text"] {
+        width: 100%; background: var(--bg); color: var(--text);
+        border: 1.5px solid var(--border); border-radius: 10px;
+        font-size: 15px; font-family: inherit; padding: 10px 12px;
+      }
+      textarea { resize: vertical; }
+      textarea:focus, input[type="text"]:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: var(--accent); }
+      .counter { text-align: right; font-size: 12px; color: var(--dim); margin-top: 4px; }
+      .radio-row { display: flex; flex-wrap: wrap; gap: 8px; }
+      .radio-pill { position: relative; }
+      .radio-pill input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+      .radio-pill span {
+        display: inline-block; padding: 6px 16px; border-radius: 999px;
+        border: 1.5px solid var(--border); background: var(--bg);
+        font-size: 14px; cursor: pointer; line-height: 1.5;
+      }
+      .radio-pill input:checked + span { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+      .radio-pill input:focus-visible + span { outline: 2px solid var(--accent-ink); outline-offset: 2px; }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+      .form-error { color: var(--accent-ink); font-size: 14px; margin: 14px 0 0; font-weight: 600; }
+      .form-success {
+        background: var(--gold-bg); color: var(--gold); border: 1.5px solid var(--gold);
+        border-radius: 10px; padding: 10px 14px; font-size: 14px; font-weight: 600; margin: 14px 0 0;
+      }
+      @media (prefers-color-scheme: dark) { .form-success { color: var(--gold); } }
+      .btn-submit {
+        display: block; width: 100%; margin-top: 18px;
+        background: var(--accent); color: #fff; border: none; cursor: pointer;
+        font-size: 16px; font-weight: 600; padding: 13px; border-radius: 999px;
+      }
+      .btn-submit:disabled { opacity: .65; cursor: default; }
+
+      /* ---------- 签墙 ---------- */
+      .wall-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+      .wall-head h2 { margin: 0; }
+      .wall-head .wall-sub { font-size: 12.5px; color: var(--dim); white-space: nowrap; }
+      .wall-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+      @media (min-width: 640px) { .wall-grid { grid-template-columns: 1fr 1fr; } }
+      .wall-state { text-align: center; color: var(--dim); font-size: 14.5px; padding: 22px 10px; }
+      .btn-reload {
+        display: block; margin: 12px auto 0;
+        background: transparent; color: var(--accent-ink);
+        border: 1.5px solid var(--accent); border-radius: 999px;
+        font-size: 14px; font-weight: 600; padding: 8px 22px; cursor: pointer;
+      }
+
+      /* ---------- 玩法 ---------- */
+      .howto ol { list-style: none; margin: 0; padding: 0; }
+      .howto li { font-size: 14.5px; margin-bottom: 10px; }
+      .fine-print { font-size: 12.5px; color: var(--dim); margin-top: 14px; }
+
+      @media (prefers-reduced-motion: reduce) {
+        .tube-wrap.shaking, .rise, .confetti.go .confetti-piece { animation: none !important; }
+        .confetti-piece { display: none; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div class="date-line" id="dateLine"></div>
+        <h1>抽签投签</h1>
+        <p class="sub" id="poolIntro">摇一摇抽一支签，抽到的都是大家攒进同一个池子的签；抽完顺手投一支你写的签进共享签池，<span id="poolCountText">池子正在装签……</span>下一个人抽到的可能就是你的。</p>
+      </header>
+
+      <!-- 第一步 · 抽签 -->
+      <section aria-label="抽签">
+        <h2 class="section-title center">第一步 · 抽一支签</h2>
+        <div class="tube-stage">
+          <div class="confetti" id="confetti" aria-hidden="true"></div>
+          <div class="tube-wrap" id="tubeWrap">
+            <div class="stick s1"></div>
+            <div class="stick s2"></div>
+            <div class="stick s3"></div>
+            <div class="stick s4"></div>
+            <div class="stick s5"></div>
+            <div class="tube"><div class="tube-face">签</div></div>
+          </div>
+        </div>
+        <button class="btn-draw" id="drawBtn" type="button">摇一摇，抽一支签</button>
+        <p class="draw-msg" id="drawMsg" role="status"></p>
+        <div id="resultArea"></div>
+      </section>
+
+      <!-- 第二步 · 投签 -->
+      <section aria-label="投签">
+        <div class="panel">
+          <h2 class="section-title">第二步 · 投一支签</h2>
+          <p class="hint-box" id="submitHint">先抽完你的签，再顺手写一支投进池子——之后别人来抽签时，就可能随机抽到你这支。</p>
+          <form id="submitForm" hidden novalidate>
+            <div class="field">
+              <label class="field-label" for="slipText">签文（4–40 字）</label>
+              <textarea id="slipText" rows="2" placeholder="比如：你排的那队，今天动得特别快"></textarea>
+              <div class="counter"><span id="charCount">0</span> / 40</div>
+            </div>
+            <div class="field">
+              <span class="field-label" id="catLabel">分类</span>
+              <div class="radio-row" role="radiogroup" aria-labelledby="catLabel" id="catRow"></div>
+            </div>
+            <div class="field">
+              <span class="field-label" id="gradeLabel">等级</span>
+              <div class="radio-row" role="radiogroup" aria-labelledby="gradeLabel" id="gradeRow"></div>
+            </div>
+            <div class="two-col">
+              <div class="field">
+                <label class="field-label" for="yiInput">宜 <span class="optional">选填</span></label>
+                <input type="text" id="yiInput" maxlength="12" placeholder="如：加个鸡腿" />
+              </div>
+              <div class="field">
+                <label class="field-label" for="jiInput">忌 <span class="optional">选填</span></label>
+                <input type="text" id="jiInput" maxlength="12" placeholder="如：熬夜" />
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label" for="fortuneInput">解签 <span class="optional">选填</span></label>
+              <input type="text" id="fortuneInput" maxlength="60" placeholder="一句话说说这支签的意思，不填也行" />
+            </div>
+            <div class="field">
+              <label class="field-label" for="authorInput">署名 <span class="optional">选填</span></label>
+              <input type="text" id="authorInput" maxlength="12" placeholder="不填就是佚名" />
+            </div>
+            <p class="form-error" id="formError" hidden></p>
+            <p class="form-success" id="formSuccess" hidden></p>
+            <button class="btn-submit" id="submitBtn" type="submit">投进签池</button>
+          </form>
+        </div>
+      </section>
+
+      <!-- 签墙 -->
+      <section aria-label="签墙">
+        <div class="wall-head">
+          <h2 class="section-title kaiti">签墙</h2>
+          <span class="wall-sub">最新投进池子的签</span>
+        </div>
+        <div id="wallArea"><p class="wall-state">正在把签墙搬出来…</p></div>
+      </section>
+
+      <!-- 玩法 -->
+      <section class="howto" aria-label="玩法">
+        <h2 class="section-title">玩法</h2>
+        <ol>
+          <li>一、抽签。打开就能摇一支签，从全店共用的签池里随机抽——内置签和同学们投的签都在里面，约 5% 概率出金签免单。</li>
+          <li>二、投签。抽完顺手写一支自己的签投进池子，提交后立刻进池、上签墙，一直都在。</li>
+          <li>三、人人可抽。你投的签，之后任何一位同学来抽签时都可能随机抽到。</li>
+        </ol>
+        <p class="fine-print">细则：抽签投签都在等咖啡时顺手完成；金签以出示时店员确认为准，每人每天限用一次；签文请友善，店家可下架不合适的签。</p>
+      </section>
+    </main>
+
+    <script>
+      (function () {
+        'use strict';
+
+        var SUPABASE_URL = 'https://kjwijvusfbzafvjqjihb.supabase.co';
+        var SUPABASE_KEY = 'sb_publishable_0EzyAdwdhpg82IXw0K01IQ__8vh9Ar2';
+        var DEFAULT_FORTUNE = '这支签是同学刚投进池子的，抽到就是缘分。';
+        var CATEGORIES = ['日常', '学业', '心情', '搞笑', '许愿'];
+        var GRADES = ['上上签', '上签', '中平签', '下签'];
+
+        /* ---------- Supabase REST 接口（浏览器原生 fetch 直连） ---------- */
+        var REST_BASE = SUPABASE_URL + '/rest/v1';
+        function sbHeaders(extra) {
+          var h = {
+            'apikey': SUPABASE_KEY,
+            'Authorization': 'Bearer ' + SUPABASE_KEY,
+            'Content-Type': 'application/json'
+          };
+          if (extra) { for (var k in extra) { if (Object.prototype.hasOwnProperty.call(extra, k)) h[k] = extra[k]; } }
+          return h;
+        }
+        function sbFetch(url, options) {
+          return fetch(url, options).then(function (res) {
+            if (!res.ok) throw new Error('http-' + res.status);
+            return res;
+          });
+        }
+
+        /* ---------- 页眉日期 ---------- */
+        (function () {
+          var now = new Date();
+          var weekdays = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+          document.getElementById('dateLine').textContent =
+            (now.getMonth() + 1) + '月' + now.getDate() + '日' + weekdays[now.getDay()] + ' · 校园咖啡';
+        })();
+
+        /* ---------- 工具 ---------- */
+        function esc(s) {
+          return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        }
+        function relTime(iso) {
+          if (!iso) return '刚刚';
+          var t = new Date(iso).getTime();
+          if (isNaN(t)) return '刚刚';
+          var diff = Date.now() - t;
+          if (diff < 60 * 1000) return '刚刚';
+          if (diff < 60 * 60 * 1000) return Math.floor(diff / 60000) + '分钟前';
+          if (diff < 24 * 60 * 60 * 1000) return Math.floor(diff / 3600000) + '小时前';
+          if (diff < 30 * 24 * 60 * 60 * 1000) return Math.floor(diff / 86400000) + '天前';
+          var d = new Date(iso);
+          return d.getFullYear() + '年' + (d.getMonth() + 1) + '月' + d.getDate() + '日';
+        }
+        function normYi(v) { return (v && String(v).trim()) ? String(v).trim() : '随缘'; }
+        function normJi(v) { return (v && String(v).trim()) ? String(v).trim() : '多想'; }
+        function normFortune(v) { return (v && String(v).trim()) ? String(v).trim() : DEFAULT_FORTUNE; }
+        function normAuthor(v) { return (v && String(v).trim()) ? String(v).trim() : '佚名'; }
+        function delay(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+
+        function getMyIds() {
+          try {
+            var raw = localStorage.getItem('mySlipIds');
+            var arr = raw ? JSON.parse(raw) : [];
+            return Array.isArray(arr) ? arr : [];
+          } catch (e) { return []; }
+        }
+        function saveMyId(id) {
+          try {
+            var arr = getMyIds().filter(function (x) { return String(x) !== String(id); });
+            arr.unshift(id);
+            localStorage.setItem('mySlipIds', JSON.stringify(arr.slice(0, 100)));
+          } catch (e) { /* 忽略 */ }
+        }
+
+        /* ---------- 签卡渲染 ---------- */
+        function slipCardHTML(slip, opts) {
+          opts = opts || {};
+          var gradeText = opts.gold ? '金签' : (slip.grade || '上签');
+          var badges = '';
+          if (opts.isNew) badges += '<span class="badge-new">刚投的</span>';
+          if (opts.isMine) badges += '<span class="badge-mine">我投的</span>';
+          return '<article class="slip-card' + (opts.gold ? ' gold' : '') + (opts.extraClass || '') + '">' +
+            '<div class="slip-top">' +
+              '<span class="grade-badge">' + esc(gradeText) + '</span>' +
+              '<span class="slip-meta">' + badges + '<span class="cat-label">' + esc(slip.category || '日常') + '</span></span>' +
+            '</div>' +
+            '<p class="slip-text">' + esc(slip.text || '') + '</p>' +
+            '<p class="slip-yiji">宜 ' + esc(normYi(slip.yi)) + ' · 忌 ' + esc(normJi(slip.ji)) + '</p>' +
+            '<p class="slip-fortune">' + esc(normFortune(slip.fortune)) + '</p>' +
+            '<div class="slip-foot">—— ' + esc(normAuthor(slip.author)) + ' · ' + esc(relTime(slip.created_at)) + '</div>' +
+          '</article>';
+        }
+
+        /* ---------- 彩纸 ---------- */
+        var confettiEl = document.getElementById('confetti');
+        (function buildConfetti() {
+          var lefts = [6, 16, 27, 38, 49, 60, 71, 82, 92];
+          var html = '';
+          for (var i = 0; i < 9; i++) {
+            var color = i % 2 === 0 ? '#c03a24' : '#d9ab3c';
+            var d = (i * 0.033).toFixed(3);
+            html += '<span class="confetti-piece" style="left:' + lefts[i] + '%;background:' + color + ';animation-delay:' + d + 's"></span>';
+          }
+          confettiEl.innerHTML = html;
+        })();
+        function fireConfetti() {
+          confettiEl.classList.remove('go');
+          void confettiEl.offsetWidth;
+          confettiEl.classList.add('go');
+          setTimeout(function () { confettiEl.classList.remove('go'); }, 1900);
+        }
+
+        /* ---------- 抽签 ---------- */
+        var drawBtn = document.getElementById('drawBtn');
+        var drawMsg = document.getElementById('drawMsg');
+        var resultArea = document.getElementById('resultArea');
+        var tubeWrap = document.getElementById('tubeWrap');
+        var drawing = false;
+        var hasDrawn = false;
+        var currentSlip = null;
+        var currentGold = false;
+
+        function unlockSubmit() {
+          if (hasDrawn) return;
+          hasDrawn = true;
+          document.getElementById('submitHint').textContent =
+            '抽到了吧？轮到你了：写一句放进全店共用的签池，它会一直留在池里，关掉页面也不会消失。';
+          document.getElementById('submitForm').hidden = false;
+        }
+
+        drawBtn.addEventListener('click', function () {
+          if (drawing) return;
+          drawing = true;
+          drawBtn.disabled = true;
+          drawBtn.textContent = '签筒摇动中…';
+          drawMsg.textContent = '';
+          tubeWrap.classList.remove('shaking');
+          void tubeWrap.offsetWidth;
+          tubeWrap.classList.add('shaking');
+
+          var rpcPromise = sbFetch(REST_BASE + '/rpc/draw_slip', {
+            method: 'POST',
+            headers: sbHeaders(),
+            body: '{}'
+          }).then(function (res) { return res.json(); });
+
+          Promise.all([rpcPromise, delay(700)]).then(function (res) {
+            var data = res[0];
+            var slip = Array.isArray(data) ? data[0] : data;
+            tubeWrap.classList.remove('shaking');
+            if (!slip) {
+              resultArea.innerHTML = '<p class="draw-msg" style="margin-top:18px">池子里还没有签，你来投第一支吧。</p>';
+              currentSlip = null;
+              unlockSubmit();
+              return;
+            }
+            currentSlip = slip;
+            currentGold = Math.random() < 0.05;
+            var html = '';
+            if (currentGold) {
+              html += '<div class="gold-banner rise">抽中金签！这一杯免单，出示这张签给店员看</div>';
+            }
+            html += slipCardHTML(slip, { gold: currentGold, extraClass: ' rise' });
+            html += '<button class="btn-copy" id="copyBtn" type="button">复制这支签</button>';
+            resultArea.innerHTML = html;
+            if (currentGold) fireConfetti();
+            var copyBtn = document.getElementById('copyBtn');
+            copyBtn.addEventListener('click', function () { copyCurrentSlip(copyBtn); });
+            unlockSubmit();
+          }).catch(function () {
+            tubeWrap.classList.remove('shaking');
+            drawMsg.textContent = '签筒刚才卡了一下，再摇一次试试。';
+          }).then(function () {
+            drawing = false;
+            drawBtn.disabled = false;
+            drawBtn.textContent = hasDrawn || currentSlip ? '再摇一支' : '摇一摇，抽一支签';
+            if (hasDrawn) drawBtn.textContent = '再摇一支';
+          });
+        });
+
+        function copyCurrentSlip(btn) {
+          if (!currentSlip) return;
+          var gradeText = currentGold ? '金签' : (currentSlip.grade || '上签');
+          var body = '「' + (currentSlip.text || '') + '」——' + gradeText +
+            '，宜' + normYi(currentSlip.yi) + '，忌' + normJi(currentSlip.ji) + '。' + normFortune(currentSlip.fortune);
+          var text = currentGold ? ('我抽到了金签免单！' + body) : ('今日签' + body);
+          function done() { btn.textContent = '已复制，去发朋友圈吧'; }
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(done).catch(function () { fallbackCopy(text); done(); });
+          } else {
+            fallbackCopy(text); done();
+          }
+        }
+        function fallbackCopy(text) {
+          try {
+            var ta = document.createElement('textarea');
+            ta.value = text;
+            ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta);
+            ta.select();
+            document.execCommand('copy');
+            document.body.removeChild(ta);
+          } catch (e) { /* 忽略 */ }
+        }
+
+        /* ---------- 投签表单 ---------- */
+        var catRow = document.getElementById('catRow');
+        var gradeRow = document.getElementById('gradeRow');
+        CATEGORIES.forEach(function (c, i) {
+          var lab = document.createElement('label');
+          lab.className = 'radio-pill';
+          lab.innerHTML = '<input type="radio" name="category" value="' + esc(c) + '"' + (i === 0 ? ' checked' : '') + '><span>' + esc(c) + '</span>';
+          catRow.appendChild(lab);
+        });
+        GRADES.forEach(function (g, i) {
+          var lab = document.createElement('label');
+          lab.className = 'radio-pill';
+          lab.innerHTML = '<input type="radio" name="grade" value="' + esc(g) + '"' + (g === '上签' ? ' checked' : '') + '><span>' + esc(g) + '</span>';
+          gradeRow.appendChild(lab);
+        });
+
+        var slipText = document.getElementById('slipText');
+        var charCount = document.getElementById('charCount');
+        function countChars(s) { return Array.from(String(s).replace(/\s+/g, '')).length; }
+        slipText.addEventListener('input', function () {
+          charCount.textContent = countChars(slipText.value);
+        });
+
+        var form = document.getElementById('submitForm');
+        var formError = document.getElementById('formError');
+        var formSuccess = document.getElementById('formSuccess');
+        var submitBtn = document.getElementById('submitBtn');
+        var submitting = false;
+        var justSubmittedId = null;
+
+        form.addEventListener('submit', function (ev) {
+          ev.preventDefault();
+          if (submitting) return;
+          formError.hidden = true;
+          formSuccess.hidden = true;
+
+          var rawText = slipText.value;
+          var len = countChars(rawText);
+          if (len < 4) {
+            formError.textContent = '签文至少写 4 个字，太短了抽到的人没东西看。';
+            formError.hidden = false;
+            return;
+          }
+          if (len > 40) {
+            formError.textContent = '签文最多 40 个字，签纸就这么大，精简一下。';
+            formError.hidden = false;
+            return;
+          }
+          var category = (form.querySelector('input[name="category"]:checked') || {}).value || '日常';
+          var grade = (form.querySelector('input[name="grade"]:checked') || {}).value || '上签';
+          var yiVal = document.getElementById('yiInput').value.trim();
+          var jiVal = document.getElementById('jiInput').value.trim();
+          var fortuneVal = document.getElementById('fortuneInput').value.trim();
+          var authorVal = document.getElementById('authorInput').value.trim();
+
+          var payload = {
+            text: rawText.trim(),
+            category: category,
+            grade: grade,
+            fortune: fortuneVal || DEFAULT_FORTUNE,
+            yi: yiVal || '随缘',
+            ji: jiVal || '多想',
+            author: authorVal || null
+          };
+
+          submitting = true;
+          submitBtn.disabled = true;
+          submitBtn.textContent = '正在放进签池…';
+
+          sbFetch(REST_BASE + '/slips', {
+            method: 'POST',
+            headers: sbHeaders({ 'Prefer': 'return=representation' }),
+            body: JSON.stringify(payload)
+          }).then(function (res) { return res.json(); }).then(function (data) {
+            var row = Array.isArray(data) ? data[0] : data;
+            justSubmittedId = row ? row.id : null;
+            if (row && row.id != null) saveMyId(row.id);
+            slipText.value = '';
+            charCount.textContent = '0';
+            document.getElementById('yiInput').value = '';
+            document.getElementById('jiInput').value = '';
+            document.getElementById('fortuneInput').value = '';
+            formSuccess.textContent = '进池了！你的签已经在签墙最上面，之后谁来抽签都有机会抽到它。';
+            formSuccess.hidden = false;
+            loadWall();
+          }).catch(function () {
+            formError.textContent = '没投进去，网络可能抖了一下，内容都还在，再点一次试试。';
+            formError.hidden = false;
+          }).then(function () {
+            submitting = false;
+            submitBtn.disabled = false;
+            submitBtn.textContent = '投进签池';
+          });
+        });
+
+        /* ---------- 签墙 + 总数 ---------- */
+        var wallArea = document.getElementById('wallArea');
+        var poolCountText = document.getElementById('poolCountText');
+
+        function loadWall() {
+          wallArea.innerHTML = '<p class="wall-state">正在把签墙搬出来…</p>';
+          var wallReq = sbFetch(REST_BASE + '/slips?select=*&order=created_at.desc&order=id.desc&limit=30', {
+            headers: sbHeaders()
+          }).then(function (res) { return res.json(); });
+          var countReq = sbFetch(REST_BASE + '/slips?select=id', {
+            headers: sbHeaders({ 'Prefer': 'count=exact' })
+          }).then(function (res) {
+            var range = res.headers.get('Content-Range') || '';
+            var m = range.match(/\/(\d+)\s*$/);
+            return m ? parseInt(m[1], 10) : null;
+          }).catch(function () { return null; });
+          Promise.all([wallReq, countReq])
+            .then(function (res) {
+              var rows = res[0] || [];
+              var total = (typeof res[1] === 'number') ? res[1] : rows.length;
+              poolCountText.textContent = '池里现在攒了 ' + total + ' 支签，';
+              if (!rows.length) {
+                wallArea.innerHTML = '<p class="wall-state">池子还空着，投下第一支签，它就会出现在这里。</p>';
+                return;
+              }
+              var myIds = getMyIds().map(String);
+              var html = '<div class="wall-grid">';
+              rows.forEach(function (r) {
+                html += slipCardHTML(r, {
+                  isNew: justSubmittedId != null && String(r.id) === String(justSubmittedId),
+                  isMine: myIds.indexOf(String(r.id)) !== -1
+                });
+              });
+              html += '</div>';
+              wallArea.innerHTML = html;
+            })
+            .catch(function () { renderWallError(); });
+        }
+        function renderWallError() {
+          wallArea.innerHTML = '<div class="wall-state">签墙没加载出来，可能是网络抖了一下。' +
+            '<button class="btn-reload" id="reloadWallBtn" type="button">重新加载签墙</button></div>';
+          var b = document.getElementById('reloadWallBtn');
+          if (b) b.addEventListener('click', loadWall);
+        }
+
+        loadWall();
+      })();
+    </script>
+  </body>
+</html>
